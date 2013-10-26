@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
@@ -49,11 +50,27 @@ void cert_info(void)
     SSL_CTX *ssl_context;
     SSL *ssl;
 
-    ssl_context = SSL_CTX_new(SSLv23_method());
-    ssl = SSL_new(ssl_context);
+    if ((ssl_context = SSL_CTX_new(SSLv23_method())) == NULL) {
+        ske_print(INFO, "\tcert_info: Can\'t create SSL context\n");
+        return;
+    }
+
+    if ((ssl = SSL_new(ssl_context)) == NULL) {
+        ske_print(INFO, "\tcert_info: Can\'t create SSL object\n");
+        return;
+    }
 
     sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
-    connect(sock, server->ai_addr, server->ai_addrlen);
+
+    if (sock == -1) {
+        ske_print(INFO, "\tcert_info: Can\'t create socket\n");
+        return;
+    }
+
+    if (connect(sock, server->ai_addr, server->ai_addrlen) == -1) {
+        ske_print(INFO, "\tcert_info: Can\'t connect to host\n");
+        return;
+    }
 
     SSL_set_fd(ssl, sock);
     if(SSL_connect(ssl) ==1) {
