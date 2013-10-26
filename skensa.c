@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <arpa/inet.h>
 #include <netdb.h>
 
 #include <openssl/ssl.h>
@@ -140,9 +141,20 @@ int skensa(void)
 
     SSL_load_error_strings();
     SSL_library_init();
-    getaddrinfo(hostname, port, &addr_info, &server);
+    int ret = getaddrinfo(hostname, port, &addr_info, &server);
 
-    cert_info();
+    if (ret == 0) {
+        char ip_addr[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, 
+                  &(((struct sockaddr_in *)server->ai_addr)->sin_addr),
+                  ip_addr, 
+                  INET_ADDRSTRLEN);
+        ske_print(INFO, " Connecting to %s:%s\n", ip_addr, port);
+        cert_info();
+    } else {
+        ske_print(INFO, "Can\'t resolve hostname (%s).", gai_strerror(ret));
+        return -1;
+    }
 
     return 0;
 }
@@ -185,8 +197,6 @@ int main(int argc, char **argv)
             }
         }
     }
-
-    ske_print(INFO, " Connecting to %s:%s\n", hostname, port);
 
     return skensa();
 }
