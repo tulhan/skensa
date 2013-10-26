@@ -9,7 +9,7 @@ Skensa is a portmanteau of the words SSL and the japanese work 'kensa' which mea
 
 Skensa currently only works in linux. A make file is included for building from source.
 
-To build from souce, type:
+To build from source, type:
 
     $ make
         
@@ -17,7 +17,7 @@ To build from souce, type:
         
 Once built, skensa can be run from the same folder as `.\skensa`.
         
-    $ .\skensa
+    $ ./skensa
     skensa v0.1
     Copyright (c) 2013, Naresh Annangar <hi@tulhan.in>
     
