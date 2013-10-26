@@ -41,70 +41,88 @@ static struct addrinfo *server;
  *
  * @ssl Pointer to an established SSL connection object.
  */
-void cert_info(SSL *ssl)
+void cert_info(void)
 {
-    BIO *bio = BIO_new(BIO_s_mem());
-    X509 *cert = SSL_get_peer_certificate(ssl);
-    EVP_PKEY *key = X509_get_pubkey(cert);
-    char _buf[255];
+    int sock;
 
-    switch(SSL_version(ssl)) {
-        case 2:
-            ske_print(INFO, "\tDefault Protocol: SSLv2\n");
-            break;
+    SSL_CTX *ssl_context;
+    SSL *ssl;
 
-        case 768:
-            ske_print(INFO, "\tDefault Protocol: SSLv3\n");
-            break;
+    ssl_context = SSL_CTX_new(SSLv23_method());
+    ssl = SSL_new(ssl_context);
 
-        case 769:
-            ske_print(INFO, "\tDefault Protocol: TLSv1\n");
-            break;
+    sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+    connect(sock, server->ai_addr, server->ai_addrlen);
 
-        case 770:
-            ske_print(INFO, "\tDefault Protocol: TLSv1.1\n");
-            break;
+    SSL_set_fd(ssl, sock);
+    if(SSL_connect(ssl) ==1) {
+        BIO *bio = BIO_new(BIO_s_mem());
+        X509 *cert = SSL_get_peer_certificate(ssl);
+        EVP_PKEY *key = X509_get_pubkey(cert);
+        char _buf[255];
 
-        case 771:
-            ske_print(INFO, "\tDefault Protocol: TLSv1.2\n");
-            break;
+        switch(SSL_version(ssl)) {
+            case 2:
+                ske_print(INFO, "\tDefault Protocol: SSLv2\n");
+                break;
 
-        default:
-            ske_print(INFO, "\tDefault Protocol: Unknown (%d)", 
-                    SSL_version(ssl));
+            case 768:
+                ske_print(INFO, "\tDefault Protocol: SSLv3\n");
+                break;
+
+            case 769:
+                ske_print(INFO, "\tDefault Protocol: TLSv1\n");
+                break;
+
+            case 770:
+                ske_print(INFO, "\tDefault Protocol: TLSv1.1\n");
+                break;
+
+            case 771:
+                ske_print(INFO, "\tDefault Protocol: TLSv1.2\n");
+                break;
+
+            default:
+                ske_print(INFO, "\tDefault Protocol: Unknown (%d)", 
+                        SSL_version(ssl));
+        }
+
+        X509_NAME_oneline(X509_get_subject_name(cert), _buf, 255);
+        ske_print(INFO, "\tIssued to: %s\n", strstr(_buf, "CN=") + 3);
+
+        X509_NAME_oneline(X509_get_issuer_name(cert), _buf, 255);
+        ske_print(INFO, "\tIssued by: %s\n", strstr(_buf, "CN=") + 3);
+
+        ASN1_TIME_print(bio, X509_get_notBefore(cert));
+        BIO_gets(bio, _buf, 255);
+        ske_print(INFO, "\tNot valid before: %s\n", _buf);
+
+        ASN1_TIME_print(bio, X509_get_notAfter(cert));
+        BIO_gets(bio, _buf, 255);
+        ske_print(INFO, "\tNot Valid After: %s\n", _buf);
+
+        switch (key->type) {
+            case EVP_PKEY_RSA:
+                ske_print(INFO, "\tPublic Key Algorithm: RSA (%d bits)\n", 
+                        BN_num_bits(key->pkey.rsa->n));
+                break;
+
+            case EVP_PKEY_DSA:
+                ske_print(INFO, "\tPublic Key Algorithm: DSA\n");
+                break;
+
+            case EVP_PKEY_EC:
+                ske_print(INFO, "\tPublic Key Algorithm: ECDSA\n");
+                break;
+
+            default:
+                ske_print(INFO, "\tPublic Key Algorithm: Unknown\n");
+        }
+    } else {
+        ske_print(INFO, " SSL Connection couldn\'t be established\n");
     }
 
-    X509_NAME_oneline(X509_get_subject_name(cert), _buf, 255);
-    ske_print(INFO, "\tIssued to: %s\n", strstr(_buf, "CN=") + 3);
-
-    X509_NAME_oneline(X509_get_issuer_name(cert), _buf, 255);
-    ske_print(INFO, "\tIssued by: %s\n", strstr(_buf, "CN=") + 3);
-
-    ASN1_TIME_print(bio, X509_get_notBefore(cert));
-    BIO_gets(bio, _buf, 255);
-    ske_print(INFO, "\tNot valid before: %s\n", _buf);
-
-    ASN1_TIME_print(bio, X509_get_notAfter(cert));
-    BIO_gets(bio, _buf, 255);
-    ske_print(INFO, "\tNot Valid After: %s\n", _buf);
-
-    switch (key->type) {
-        case EVP_PKEY_RSA:
-            ske_print(INFO, "\tPublic Key Algorithm: RSA (%d bits)\n", 
-                    BN_num_bits(key->pkey.rsa->n));
-            break;
-
-        case EVP_PKEY_DSA:
-            ske_print(INFO, "\tPublic Key Algorithm: DSA\n");
-            break;
-
-        case EVP_PKEY_EC:
-            ske_print(INFO, "\tPublic Key Algorithm: ECDSA\n");
-            break;
-
-        default:
-            ske_print(INFO, "\tPublic Key Algorithm: Unknown\n");
-    }
+    SSL_shutdown(ssl);
 }
 
 /**
@@ -114,11 +132,7 @@ void cert_info(SSL *ssl)
  */
 int skensa(void)
 {
-    SSL_CTX *ssl_context;
-    SSL *ssl;
-
     struct addrinfo addr_info;
-    int sock;
 
     memset(&addr_info, 0, sizeof addr_info);
     addr_info.ai_family = AF_INET;
@@ -126,21 +140,9 @@ int skensa(void)
 
     SSL_load_error_strings();
     SSL_library_init();
-    ssl_context = SSL_CTX_new(SSLv23_method());
-    ssl = SSL_new(ssl_context);
-
     getaddrinfo(hostname, port, &addr_info, &server);
-    sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
-    connect(sock, server->ai_addr, server->ai_addrlen);
 
-    SSL_set_fd(ssl, sock);
-    if(SSL_connect(ssl) ==1) {
-        cert_info(ssl);
-    } else {
-        ske_print(INFO, " SSL Connection couldn\'t be established\n");
-    }
-
-    SSL_shutdown(ssl);
+    cert_info();
 
     return 0;
 }
