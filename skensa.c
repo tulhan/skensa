@@ -77,7 +77,7 @@ void cert_info(void)
         BIO *bio = BIO_new(BIO_s_mem());
         X509 *cert = SSL_get_peer_certificate(ssl);
         EVP_PKEY *key = X509_get_pubkey(cert);
-        char _buf[255];
+        char _buf[255], *_pos1, *_pos2;
 
         switch(SSL_version(ssl)) {
             case 2:
@@ -106,10 +106,38 @@ void cert_info(void)
         }
 
         X509_NAME_oneline(X509_get_subject_name(cert), _buf, 255);
-        ske_print(INFO, "\tIssued to: %s\n", strstr(_buf, "CN=") + 3);
+        if ((_pos1 = strstr(_buf, "CN=")) != NULL) {
+            _pos1 += strlen("CN=");
+            if((_pos2 = strchr(_pos1, '/')) != NULL) {
+                *_pos2 = '\0';
+            }
+            ske_print(INFO, "\tIssued to: %s\n", _pos1);
+        } else if ((_pos1 = strstr(_buf, "O=")) != NULL) {
+            _pos1 += strlen("O=");
+            if((_pos2 = strchr(_pos1, '/')) != NULL) {
+                *_pos2 = '\0';
+            }
+            ske_print(INFO, "\tIssued to: %s\n", _pos1);
+        } else {
+            ske_print(INFO, "\tIssued to: %s\n", _buf);
+        }
 
         X509_NAME_oneline(X509_get_issuer_name(cert), _buf, 255);
-        ske_print(INFO, "\tIssued by: %s\n", strstr(_buf, "CN=") + 3);
+        if ((_pos1 = strstr(_buf, "CN=")) != NULL) {
+            _pos1 += strlen("CN=");
+            if((_pos2 = strchr(_pos1, '/')) != NULL) {
+                *_pos2 = '\0';
+            }
+            ske_print(INFO, "\tIssued by: %s\n", _pos1);
+        } else if ((_pos1 = strstr(_buf, "O=")) != NULL) {
+            _pos1 += strlen("O=");
+            if((_pos2 = strchr(_pos1, '/')) != NULL) {
+                *_pos2 = '\0';
+            }
+            ske_print(INFO, "\tIssued by: %s\n", _pos1);
+        } else {
+            ske_print(INFO, "\tIssued by: %s\n", _buf);
+        }
 
         ASN1_TIME_print(bio, X509_get_notBefore(cert));
         BIO_gets(bio, _buf, 255);
