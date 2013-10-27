@@ -101,6 +101,41 @@ char *ssl_ver(int version)
     }
 }
 
+void populate_ciphers(const SSL_METHOD *ssl_method)
+{
+    SSL_CTX *ssl_context;
+    SSL *ssl;
+    STACK_OF(SSL_CIPHER) *cipher_list;
+
+    if ((ssl_context = SSL_CTX_new(ssl_method)) == NULL) {
+        ske_print(INFO, "\tCan\'t create SSL context\n");
+        return;
+    }
+
+    if(SSL_CTX_set_cipher_list(ssl_context, "ALL:COMPLEMENTOFALL") != 1) {
+        ske_print(INFO, "Can\'t select any cipher\n");
+        return;
+    }
+    
+    if ((ssl = SSL_new(ssl_context)) == NULL) {
+        ske_print(INFO, "\tCan\'t create SSL object\n");
+        return;
+    }
+
+    cipher_list = SSL_get_ciphers(ssl);
+
+    struct cipher *cipher;
+    for(int i = 0; i < sk_SSL_CIPHER_num(cipher_list); i++) {
+        cipher = new_cipher();
+        cipher->method = ssl_method;
+        cipher->name = strdup(
+                        SSL_CIPHER_get_name(
+                            sk_SSL_CIPHER_value(cipher_list, i)));
+        cipher->bits = SSL_CIPHER_get_bits(sk_SSL_CIPHER_value(cipher_list, i), 
+                                           NULL);
+    }
+}
+
 /*
  * Gets and prints certificate information based on the ssl object.
  *
