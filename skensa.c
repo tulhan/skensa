@@ -315,18 +315,27 @@ int skensa(void)
     SSL_library_init();
     int ret = getaddrinfo(hostname, port, &addr_info, &server);
 
-    if (ret == 0) {
-        char ip_addr[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, 
-                  &(((struct sockaddr_in *)server->ai_addr)->sin_addr),
-                  ip_addr, 
-                  INET_ADDRSTRLEN);
-        ske_print(INFO, " Connecting to %s:%s\n", ip_addr, port);
-        cert_info();
-    } else {
+    if (ret != 0) {
         ske_print(INFO, "Can\'t resolve hostname (%s).", gai_strerror(ret));
         return -1;
     }
+
+    char ip_addr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, 
+                &(((struct sockaddr_in *)server->ai_addr)->sin_addr),
+                ip_addr, 
+                INET_ADDRSTRLEN);
+    ske_print(INFO, " Connecting to %s:%s\n", ip_addr, port);
+
+    cert_info();
+
+    ske_print(INFO, "\n Enumerating ciphers...\n");
+    populate_ciphers(SSLv2_method());
+    populate_ciphers(SSLv3_method());
+    populate_ciphers(TLSv1_method());
+    populate_ciphers(TLSv1_1_method());
+    populate_ciphers(TLSv1_2_method());
+    enum_ciphers();
 
     return 0;
 }
