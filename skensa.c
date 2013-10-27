@@ -19,7 +19,7 @@
 #include <openssl/ssl.h>
 
 #define ske_print(verbosity, ...) if (verbosity <= ske_verbosity) { printf(__VA_ARGS__); }
-#define SKE_VER "0.1"
+#define SKE_VER "0.2"
 
 static const char *ske_version =
 "skensa v" SKE_VER "\n"
