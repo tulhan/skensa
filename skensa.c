@@ -94,7 +94,7 @@ char *ssl_ver(int version)
             return strdup("TLSv1.1");
 
         case 771:
-            return strdup("TLSv1l2");
+            return strdup("TLSv1.2");
 
         default:
             return strdup("Unknown");
