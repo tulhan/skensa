@@ -136,6 +136,58 @@ void populate_ciphers(const SSL_METHOD *ssl_method)
     }
 }
 
+void enum_ciphers()
+{
+    SSL_CTX *ssl_context;
+    SSL *ssl;
+
+    int sock;
+
+    for (int i = 0; i < ciphers.count; i++) {
+        if ((ssl_context = SSL_CTX_new(ciphers.cipher[i].method)) == NULL) {
+            ske_print(INFO, "\tCan\'t create SSL context\n");
+            return;
+        }
+
+        if(SSL_CTX_set_cipher_list(ssl_context, ciphers.cipher[i].name) != 1) {
+            ske_print(INFO, "Can\'t select cipher\n");
+            return;
+        }
+        
+        if ((ssl = SSL_new(ssl_context)) == NULL) {
+            ske_print(INFO, "\tCan\'t create SSL object\n");
+            return;
+        }
+
+        sock = socket(server->ai_family, server->ai_socktype, 
+                      server->ai_protocol);
+
+        if (sock == -1) {
+            ske_print(INFO, "\tCan\'t create socket\n");
+            return;
+        }
+
+        if (connect(sock, server->ai_addr, server->ai_addrlen) == -1) {
+            ske_print(INFO, "\tCan\'t connect to host\n");
+            return;
+        }
+
+        SSL_set_fd(ssl, sock);
+        if(SSL_connect(ssl) ==1) {
+            ske_print(INFO, "\t%4d bits  %-8s %-30s Accepted\n", 
+                      ciphers.cipher[i].bits,
+                      ssl_ver(ciphers.cipher[i].method->version),
+                      ciphers.cipher[i].name);
+        } else {
+            ske_print(VERB, "\t%4d bits  %10s %s Rejected\n", 
+                      ciphers.cipher[i].bits,
+                      ssl_ver(ciphers.cipher[i].method->version),
+                      ciphers.cipher[i].name);
+        }
+
+    }
+}
+
 /*
  * Gets and prints certificate information based on the ssl object.
  *
