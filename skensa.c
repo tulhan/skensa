@@ -38,6 +38,29 @@ static char *hostname;
 static char *port;
 static struct addrinfo *server;
 
+char *ssl_ver(int version)
+{
+    switch(version) {
+        case 2:
+            return strdup("SSLv2");
+
+        case 768:
+            return strdup("SSLv3");
+
+        case 769:
+            return strdup("TLSv1");
+
+        case 770:
+            return strdup("TLSv1.1");
+
+        case 771:
+            return strdup("TLSv1l2");
+
+        default:
+            return strdup("Unknown");
+    }
+}
+
 /*
  * Gets and prints certificate information based on the ssl object.
  *
