@@ -102,31 +102,8 @@ void cert_info(void)
         EVP_PKEY *key = X509_get_pubkey(cert);
         char _buf[255], *_pos1, *_pos2;
 
-        switch(SSL_version(ssl)) {
-            case 2:
-                ske_print(INFO, "\tDefault Protocol: SSLv2\n");
-                break;
-
-            case 768:
-                ske_print(INFO, "\tDefault Protocol: SSLv3\n");
-                break;
-
-            case 769:
-                ske_print(INFO, "\tDefault Protocol: TLSv1\n");
-                break;
-
-            case 770:
-                ske_print(INFO, "\tDefault Protocol: TLSv1.1\n");
-                break;
-
-            case 771:
-                ske_print(INFO, "\tDefault Protocol: TLSv1.2\n");
-                break;
-
-            default:
-                ske_print(INFO, "\tDefault Protocol: Unknown (%d)", 
-                        SSL_version(ssl));
-        }
+        ske_print(INFO, "\tDefault Protocol: %s\n",
+                  ssl_ver(SSL_version(ssl)));
 
         X509_NAME_oneline(X509_get_subject_name(cert), _buf, 255);
         if ((_pos1 = strstr(_buf, "CN=")) != NULL) {
