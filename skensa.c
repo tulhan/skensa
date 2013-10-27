@@ -38,6 +38,46 @@ static char *hostname;
 static char *port;
 static struct addrinfo *server;
 
+struct cipher {
+    const SSL_METHOD *method;
+    const char *name;
+    int bits;
+};
+
+struct {
+    struct cipher *cipher;
+    int count;
+    int alloc;
+} ciphers;
+
+void init_ciphers()
+{
+    ciphers.cipher = (struct cipher *) malloc(5 * sizeof(struct cipher));
+    ciphers.count = 0;
+    ciphers.alloc = 5;
+}
+
+struct cipher *new_cipher()
+{
+    struct cipher *ret;
+    if(ciphers.count == ciphers.alloc) {
+        ciphers.alloc += 5;
+        ciphers.cipher = (struct cipher *) realloc(ciphers.cipher, 
+                ciphers.alloc * sizeof (struct cipher));
+    }
+
+    ret = &ciphers.cipher[ciphers.count];
+    ciphers.count++;
+    return ret;
+}
+
+void del_ciphers()
+{
+    free(ciphers.cipher);
+    ciphers.cipher = NULL;
+    ciphers.count = ciphers.alloc = 0;
+}
+
 char *ssl_ver(int version)
 {
     switch(version) {
