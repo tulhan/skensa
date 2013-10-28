@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/time.h>
 
 #include <sys/socket.h>
@@ -104,6 +105,8 @@ char *ssl_ver(int version)
 
 void populate_ciphers(const SSL_METHOD *ssl_method)
 {
+    int sock;
+
     SSL_CTX *ssl_context;
     SSL *ssl;
     STACK_OF(SSL_CIPHER) *cipher_list;
@@ -123,6 +126,25 @@ void populate_ciphers(const SSL_METHOD *ssl_method)
         return;
     }
 
+    sock = socket(server->ai_family, server->ai_socktype, 
+                    server->ai_protocol);
+
+    if (sock == -1) {
+        ske_print(INFO, "\tCan\'t create socket\n");
+        return;
+    }
+
+    if (connect(sock, server->ai_addr, server->ai_addrlen) == -1) {
+        ske_print(INFO, "\tCan\'t connect to host\n");
+        return;
+    }
+
+    SSL_set_fd(ssl, sock);
+    if(SSL_connect(ssl) !=1) {
+        ske_print(INFO, "\t%s protocol unsupported\n", ssl_ver(ssl_method->version));
+        return;
+    }
+
     cipher_list = SSL_get_ciphers(ssl);
 
     struct cipher *cipher;
@@ -135,6 +157,8 @@ void populate_ciphers(const SSL_METHOD *ssl_method)
         cipher->bits = SSL_CIPHER_get_bits(sk_SSL_CIPHER_value(cipher_list, i), 
                                            NULL);
     }
+    SSL_shutdown(ssl);
+    close(sock);
 }
 
 void enum_ciphers()
