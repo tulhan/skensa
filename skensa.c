@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -305,7 +306,10 @@ void cert_info(void)
  */
 int skensa(void)
 {
+    struct timeval start, stop;
     struct addrinfo addr_info;
+
+    gettimeofday(&start, NULL);
 
     memset(&addr_info, 0, sizeof addr_info);
     addr_info.ai_family = AF_INET;
@@ -336,6 +340,12 @@ int skensa(void)
     populate_ciphers(TLSv1_1_method());
     populate_ciphers(TLSv1_2_method());
     enum_ciphers();
+
+    gettimeofday(&stop, NULL);
+    ske_print(INFO, " Enumerated %d ciphers in %ld.%lu sec", 
+              ciphers.count,
+              (int) stop.tv_sec-start.tv_sec,
+              stop.tv_usec - start.tv_usec);
 
     return 0;
 }
