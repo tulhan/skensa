@@ -299,6 +299,16 @@ void cert_info(void)
         BIO_gets(bio, _buf, 255);
         ske_print(INFO, "\tNot Valid After: %s\n", _buf);
 
+        i2a_ASN1_OBJECT(bio, cert->cert_info->signature->algorithm);
+        BIO_gets(bio, _buf, 255);
+        if (strncmp(_buf, "md5", sizeof("md5") - 1) == 0) {
+            ske_print(INFO, "\tSignature Algorithm: MD5\n");
+        } else if (strncmp(_buf, "sha1", sizeof("sha1") - 1) == 0) {
+            ske_print(INFO, "\tSignature Algorithm: SHA1\n");
+        } else {
+            ske_print(INFO, "\tSignature Algorithm: %s\n", _buf);
+        }
+
         switch (key->type) {
             case EVP_PKEY_RSA:
                 ske_print(INFO, "\tPublic Key Algorithm: RSA (%d bits)\n", 
