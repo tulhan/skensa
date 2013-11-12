@@ -161,6 +161,56 @@ void populate_ciphers(const SSL_METHOD *ssl_method)
     close(sock);
 }
 
+void test_reneg()
+{
+    int sock;
+
+    SSL_CTX *ssl_context;
+    SSL *ssl;
+
+    if ((ssl_context = SSL_CTX_new(SSLv23_method())) == NULL) {
+        ske_print(INFO, "\tcert_info: Can\'t create SSL context\n");
+        return;
+    }
+
+    if ((ssl = SSL_new(ssl_context)) == NULL) {
+        ske_print(INFO, "\tcert_info: Can\'t create SSL object\n");
+        return;
+    }
+
+    sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+
+    if (sock == -1) {
+        ske_print(INFO, "\tcert_info: Can\'t create socket\n");
+        return;
+    }
+
+    if (connect(sock, server->ai_addr, server->ai_addrlen) == -1) {
+        ske_print(INFO, "\tcert_info: Can\'t connect to host\n");
+        return;
+    }
+
+    SSL_set_fd(ssl, sock);
+    if(SSL_connect(ssl) ==1) {
+        if (SSL_get_secure_renegotiation_support(ssl)) {
+            ske_print(INFO, "\n Secure renegotiation: Supported\n");
+        }
+        if(SSL_renegotiate(ssl) == 1) {
+            SSL_do_handshake(ssl);
+            if (ssl->state == SSL_ST_OK) {
+                SSL_do_handshake(ssl);
+                if (ssl->state == SSL_ST_OK) {
+                    ske_print(INFO, " Client initiated renegotiation: Supported\n");
+                }
+            } else {
+                ske_print(INFO, " Client initiated renegotiation: Unsupported\n");
+            }
+        } else {
+            ske_print(INFO, " Client initiated renegotiation: Unsupported\n");
+        }
+    }
+}
+
 void enum_ciphers()
 {
     SSL_CTX *ssl_context;
@@ -380,6 +430,8 @@ int skensa(void)
               ciphers.count,
               (int) stop.tv_sec-start.tv_sec,
               stop.tv_usec - start.tv_usec);
+
+    test_reneg();
 
     return 0;
 }
