@@ -20,8 +20,8 @@ TLSVersions = {
     "TLSv1.2": b'\x03\03'
 }
 
-for cipher in tls_ciphers:
-    for ver_str, ver_code in TLSVersions.items():
+for ver_str, ver_code in TLSVersions.items():
+    for cipher in tls_ciphers:
         ch_ver = ver_code
         ch_rand = bytes.fromhex(uuid.uuid4().hex + uuid.uuid4().hex)
         ch_sessid = b'\x00'
