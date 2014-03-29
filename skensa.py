@@ -25,7 +25,8 @@ for cipher in tls_ciphers:
         ch_ver = ver_code
         ch_rand = bytes.fromhex(uuid.uuid4().hex + uuid.uuid4().hex)
         ch_sessid = b'\x00'
-        ch_cipher_suite = b'\x00\x04' + bytes.fromhex(cipher.code) + b'\x00\xff'
+        ch_cipher_suite = b'\x00\x04' + bytes.fromhex(cipher.code) + \
+            b'\x00\xff'
         ch_compression = b'\x01\x00'
         ch_payload = ch_ver + ch_rand + ch_sessid + ch_cipher_suite \
             + ch_compression
@@ -41,5 +42,19 @@ for cipher in tls_ciphers:
         s.send(tls_record)
         data = s.recv(1)
         if data == b'\x16':
-            print("Accepted %7s %3s bits %-s"%(ver_str, cipher.bits, cipher.name))
+            if cipher.name.startswith('EXP'):
+                cipher_strength = 'EXP'
+            elif cipher.au == 'None':
+                cipher_strength = 'ANON'
+            elif cipher.enc == 'None':
+                cipher_strength = 'NULL'
+            elif cipher.bits < '128':
+                cipher_strength = 'WEAK'
+            elif cipher.bits == '128':
+                cipher_strength = 'MED'
+            else:
+                cipher_strength = 'HIGH'
+
+            print("Accepted %7s %3s bits %-s (%s)" %
+                  (ver_str, cipher.bits, cipher.name, cipher_strength))
         s.close()
