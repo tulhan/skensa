@@ -90,28 +90,33 @@ def cert_info(hostname, port):
     s.send(tls_record)
     data = s.recv(10*1024)
     if data[0] == 22:
+        # Skip ServerHello
         data = data[3:]
         sh_len = int.from_bytes(data[:2], 'big')
-        data = data[2:]
+        data = data[2 + sh_len:]
 
-        certs_rec = data[sh_len:]
+        #Check for ServerHelloDone and skip it too
+        if int.from_bytes(data[5:6], 'big') == 14:
+            shd_rec = data[3:]
+            shd_rec_len = int.from_bytes(data[:2], 'big')
+            certs_rec = shd_rec[shd_rec_len + 2:]
+        else:
+            certs_rec = data
+
         certs_rec = certs_rec[3:] # Rec. type(1B), Rec. proto.(2B)
         certs_rec_len = int.from_bytes(certs_rec[:2], 'big') # Rec. len.(2B)
         certs_rec = certs_rec[2:]
-        print(certs_rec_len)
 
-        certs_payld = certs_rec[:certs_rec_len]
-        certs_payld = certs_rec[7:] # Hs. type(1B), Rec. len(3B), cert. len(3B)
+        certs = certs_rec[:certs_rec_len]
+        certs = certs_rec[7:] # Hs. type(1B), Rec. len(3B), cert. len(3B)
 
-        print(len(certs_payld))
-        print(certs_payld[:100])
-        #sh_len += 17
-        #cert1_len = int.from_bytes(data[sh_len:sh_len+3], 'big')
-        #cert1 = data[sh_len+3:sh_len+cert1_len+3]
-        #print(len(cert1))
-        #print(cert1[:100])
-        #decc = decoder.decode(cert1)
-        #print(decc[0][0][2][0])
+        cert1_len = int.from_bytes(certs[:3], 'big')
+        cert1 = certs[3:]
+        cert1 = cert1[:cert1_len]
+
+        the_cert = decoder.decode(cert1)
+        signed_cert = the_cert[0][0]
+
     else:
         print("No Server Hello")
 
