@@ -40,6 +40,7 @@ def oid2str(oid):
     else:
         return False
 
+
 def enum_ciphers(hostname, port, protos):
 
     TLSVersions = {
@@ -87,7 +88,8 @@ def enum_ciphers(hostname, port, protos):
                     cipher_strength = 'HIGH'
 
                 log.info("Accepted %7s %3s bits %-s (%s)" %
-                    (proto, cipher.bits, cipher.name, cipher_strength))
+                         (proto, cipher.bits,
+                          cipher.name, cipher_strength))
             s.close()
 
 
@@ -121,7 +123,7 @@ def cert_info(hostname, port):
         log.debug("")
         data = data[2 + sh_len:]
 
-        #Check for ServerHelloDone and skip it too
+        # Check for ServerHelloDone and skip it too
         if int.from_bytes(data[5:6], 'big') == 14:
             shd_rec = data[3:]
             shd_rec_len = int.from_bytes(data[:2], 'big')
@@ -132,15 +134,15 @@ def cert_info(hostname, port):
         else:
             certs_rec = data
 
-        certs_rec = certs_rec[3:] # Rec. type(1B), Rec. proto.(2B)
-        certs_rec_len = int.from_bytes(certs_rec[:2], 'big') # Rec. len.(2B)
+        certs_rec = certs_rec[3:]  # Rec. type(1B), Rec. proto.(2B)
+        certs_rec_len = int.from_bytes(certs_rec[:2], 'big')  # Rec. len.(2B)
         log.debug("Certs Rec: {}".format(certs_rec_len))
         log.debug("Certs Data: {}".format(certs_rec[:100]))
         log.debug("")
         certs_rec = certs_rec[2:]
 
         certs = certs_rec[:certs_rec_len]
-        certs = certs_rec[7:] # Hs. type(1B), Rec. len(3B), cert. len(3B)
+        certs = certs_rec[7:]  # Hs. type(1B), Rec. len(3B), cert. len(3B)
 
         cert1_len = int.from_bytes(certs[:3], 'big')
         cert1 = certs[3:]
@@ -178,34 +180,34 @@ def cert_info(hostname, port):
         log.info("Subject: {}".format(', '.join(cert_subj)))
 
         binval = ''.join([str(x) for x in signed_cert[6][1]])
-        pubkey = decoder.decode(univ.OctetString(binValue = binval))
+        pubkey = decoder.decode(univ.OctetString(binValue=binval))
         key_len = int(pubkey[0][0]).bit_length()
         log.info("Public Key Algorithm: {} ({} bits)"
-            .format(oid2str(signed_cert[6][0][0]),
-                key_len))
+                 .format(oid2str(signed_cert[6][0][0]),
+                         key_len))
     else:
         log.error("No Server Hello")
-
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("hostname", help="IP/Hostname of the URL to scan")
-    parser.add_argument("port", help="IP/Hostname of the URL to scan", type=int)
+    parser.add_argument("port", help="IP/Hostname of the URL to scan",
+                        type=int)
     parser.add_argument("--ssl2", help="Scan for SSLv2 Ciphers",
-        action="store_true")
+                        action="store_true")
     parser.add_argument("--ssl3", help="Scan for SSLv3 Ciphers",
-        action="store_true")
+                        action="store_true")
     parser.add_argument("--tls1", help="Scan for TLSv1.0 Ciphers",
-        action="store_true")
+                        action="store_true")
     parser.add_argument("--tls11", help="Scan for TLSv1.1 Ciphers",
-        action="store_true")
+                        action="store_true")
     parser.add_argument("--tls12", help="Scan for TLSv1.2 Ciphers",
-        action="store_true")
+                        action="store_true")
     parser.add_argument("--cert", help="Get only the certificate details",
-        action="store_true")
+                        action="store_true")
     parser.add_argument("--debug", help="Start in debug mode",
-        action="store_true")
+                        action="store_true")
     args = parser.parse_args()
 
     protos = []
