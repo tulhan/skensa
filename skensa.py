@@ -8,6 +8,7 @@ import argparse
 import collections
 
 from pyasn1.codec.der import decoder
+from pyasn1.type import univ
 
 log = logging.getLogger(__name__)
 logging.basicConfig(format='%(message)s', level=logging.INFO)
@@ -152,25 +153,36 @@ def cert_info(hostname, port):
         signed_cert = the_cert[0][0]
 
         log.info("Version: {}".format(signed_cert[0]))
+
         log.info("Serial No.: {}".format(signed_cert[1]))
+
         log.info("Signature: {}".format(oid2str(signed_cert[2][0])))
+
         cert_issuer = []
         for field in signed_cert[3]:
             oid_str = oid2str(field[0][0])
             if oid_str:
                 cert_issuer.append("{} ({})".format(field[0][1], oid_str))
+
         log.info("Issuer: {}".format(', '.join(cert_issuer)))
+
         log.info("Not Valid Before: {}".format(signed_cert[4][0]))
+
         log.info("Not Valid After: {}".format(signed_cert[4][1]))
+
         cert_subj = []
         for field in signed_cert[5]:
             oid_str = oid2str(field[0][0])
             if oid_str:
                 cert_subj.append("{} ({})".format(field[0][1], oid_str))
         log.info("Subject: {}".format(', '.join(cert_subj)))
-        log.info("Public Key Algorithm: {}".format(oid2str(signed_cert[6][0][0])))
-        serial_no = signed_cert[1]
 
+        binval = ''.join([str(x) for x in signed_cert[6][1]])
+        pubkey = decoder.decode(univ.OctetString(binValue = binval))
+        key_len = int(pubkey[0][0]).bit_length()
+        log.info("Public Key Algorithm: {} ({} bits)"
+            .format(oid2str(signed_cert[6][0][0]),
+                key_len))
     else:
         log.error("No Server Hello")
 
