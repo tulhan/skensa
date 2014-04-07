@@ -133,6 +133,22 @@ def cert_info(hostname, port):
         the_cert = decoder.decode(cert1)
         signed_cert = the_cert[0][0]
 
+        log.info("Version: {}".format(signed_cert[0]))
+        log.info("Serial No.: {}".format(signed_cert[1]))
+        log.info("Signature: {}".format(signed_cert[2][0]))
+        print()
+        for field in signed_cert[3]:
+            log.info("Issuer: ({}) {}".format(field[0][0], field[0][1]))
+        print()
+        log.info("Not Valid Before: {}".format(signed_cert[4][0]))
+        log.info("Not Valid After: {}".format(signed_cert[4][1]))
+        print()
+        for field in signed_cert[5]:
+            log.info("Subject: ({}) {}".format(field[0][0], field[0][1]))
+        print()
+        log.info("Public Key Algorithm: {}".format(signed_cert[6][0][0]))
+        serial_no = signed_cert[1]
+
     else:
         log.error("No Server Hello")
 
