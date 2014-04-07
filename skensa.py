@@ -21,6 +21,24 @@ with open('ciphers') as csvfile:
         tls_ciphers.append(Cipher._make(row))
 
 
+def oid2str(oid):
+    OID_MAP = {
+        "1.2.840.113549.1.1.1": "RSA Encryption",
+        "1.2.840.113549.1.1.2": "MD2 with RSA Encryption",
+        "1.2.840.113549.1.1.3": "MD4 with RSA Encryption",
+        "1.2.840.113549.1.1.4": "MD5 with RSA Encryption",
+        "1.2.840.113549.1.1.5": "SHA1 with RSA Encryption",
+        "1.2.840.113549.1.1.11": "SHA256 with RSA Encryption",
+        "2.5.4.3": "CN",
+        "2.5.4.10": "O",
+        "2.5.4.11": "OU",
+    }
+    oid = str(oid)
+    if oid in OID_MAP.keys():
+        return OID_MAP[oid]
+    else:
+        return False
+
 def enum_ciphers(hostname, port, protos):
 
     TLSVersions = {
@@ -135,18 +153,22 @@ def cert_info(hostname, port):
 
         log.info("Version: {}".format(signed_cert[0]))
         log.info("Serial No.: {}".format(signed_cert[1]))
-        log.info("Signature: {}".format(signed_cert[2][0]))
-        print()
+        log.info("Signature: {}".format(oid2str(signed_cert[2][0])))
+        cert_issuer = []
         for field in signed_cert[3]:
-            log.info("Issuer: ({}) {}".format(field[0][0], field[0][1]))
-        print()
+            oid_str = oid2str(field[0][0])
+            if oid_str:
+                cert_issuer.append("{} ({})".format(field[0][1], oid_str))
+        log.info("Issuer: {}".format(', '.join(cert_issuer)))
         log.info("Not Valid Before: {}".format(signed_cert[4][0]))
         log.info("Not Valid After: {}".format(signed_cert[4][1]))
-        print()
+        cert_subj = []
         for field in signed_cert[5]:
-            log.info("Subject: ({}) {}".format(field[0][0], field[0][1]))
-        print()
-        log.info("Public Key Algorithm: {}".format(signed_cert[6][0][0]))
+            oid_str = oid2str(field[0][0])
+            if oid_str:
+                cert_subj.append("{} ({})".format(field[0][1], oid_str))
+        log.info("Subject: {}".format(', '.join(cert_subj)))
+        log.info("Public Key Algorithm: {}".format(oid2str(signed_cert[6][0][0])))
         serial_no = signed_cert[1]
 
     else:
