@@ -93,6 +93,62 @@ def enum_ciphers(hostname, port, protos):
             s.close()
 
 
+def fastfwd_packet(blob):
+    if blob[0] == 22:
+        len_offset = 3  # Rec. Type(1B), TLS Ver. (2B)
+        len_length = 2
+        start_pos = len_offset
+        end_pos = len_offset + len_length
+        pyld_len = int.from_bytes(blob[start_pos:end_pos], 'big')
+        blob = blob[end_pos + pyld_len:]
+    else:
+        raise DecodeError('Packet is not a TLS Record')
+
+    # Check if the next byte indicates the start of a new record
+    if blob[0] == 22:
+        return blob
+    else:
+        raise DecodeError('Unable to identify packet boundary')
+
+
+def get_tls_payload(blob):
+    if blob[0] == 22:
+        len_offset = 3  # Rec. Type(1B), TLS Ver. (2B)
+        len_length = 2
+        start_pos = len_offset
+        end_pos = len_offset + len_length
+        pyld_len = int.from_bytes(blob[start_pos:end_pos], 'big')
+        blob = blob[end_pos:]
+    else:
+        raise DecodeError('Packet is not a TLS Record')
+
+    if blob[0] == 11:
+        return blob[:pyld_len]
+    else:
+        raise DecodeError('Unable to identify packet boundary')
+
+    certs_rec = certs_rec[2:]
+    certs = certs_rec[:certs_rec_len]
+    certs = certs_rec[7:]  # Hs. type(1B), Rec. len(3B), cert. len(3B)
+
+
+def get_first_cert_from_certs_record(blob):
+    if blob[0] == 11:
+        # Skip record header
+        blob = blob[7:]
+        len_length = 3
+        cert1_len = int.from_bytes(blob[:len_length], 'big')
+        start_pos = len_length
+        end_pos = len_length + cert1_len
+
+        if blob[start_pos] == 30:
+            return blob[start_pos:end_pos]
+        else:
+            raise DecodeError('Unable to identify packet boundary')
+    else:
+        raise DecodeError('Packet is not a Certificate Record')
+
+
 def cert_info(hostname, port):
     ch_ver = b'\x03\x00'
     ch_rand = bytes.fromhex(uuid.uuid4().hex + uuid.uuid4().hex)
@@ -114,44 +170,20 @@ def cert_info(hostname, port):
     s.connect((hostname, port))
     s.send(tls_record)
     data = s.recv(10*1024)
+
     if data[0] == 22:
-        # Skip ServerHello
-        data = data[3:]
-        sh_len = int.from_bytes(data[:2], 'big')
-        log.debug("ServerHello: {}".format(sh_len))
-        log.debug("SH Data: {}".format(data[:100]))
-        log.debug("")
-        data = data[2 + sh_len:]
+        data = fastfwd_packet(data)
 
         # Check for ServerHelloDone and skip it too
-        if int.from_bytes(data[5:6], 'big') == 14:
-            shd_rec = data[3:]
-            shd_rec_len = int.from_bytes(data[:2], 'big')
-            log.debug("ServerHelloDone: {}".format(shd_rec_len))
-            log.debug("SHD Data: {}".format(shd_rec[:100]))
-            log.debug("")
-            certs_rec = shd_rec[shd_rec_len + 2:]
-        else:
-            certs_rec = data
+        if data[5:6] == 14:
+            data = fastfwd_packet(data)
 
-        certs_rec = certs_rec[3:]  # Rec. type(1B), Rec. proto.(2B)
-        certs_rec_len = int.from_bytes(certs_rec[:2], 'big')  # Rec. len.(2B)
-        log.debug("Certs Rec: {}".format(certs_rec_len))
-        log.debug("Certs Data: {}".format(certs_rec[:100]))
-        log.debug("")
-        certs_rec = certs_rec[2:]
+        if data[5:6] == 11:
+            data = get_tls_payload(data)
 
-        certs = certs_rec[:certs_rec_len]
-        certs = certs_rec[7:]  # Hs. type(1B), Rec. len(3B), cert. len(3B)
+        data = get_first_cert_from_certs_record(data)
 
-        cert1_len = int.from_bytes(certs[:3], 'big')
-        cert1 = certs[3:]
-        cert1 = cert1[:cert1_len]
-        log.debug("Cert1 Rec: {}".format(cert1_len))
-        log.debug("Cert1 Data: {}".format(cert1[:100]))
-        log.debug("")
-
-        the_cert = decoder.decode(cert1)
+        the_cert = decoder.decode(data)
         signed_cert = the_cert[0][0]
 
         log.info("Version: {}".format(signed_cert[0]))
